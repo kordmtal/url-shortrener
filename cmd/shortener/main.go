@@ -40,10 +40,6 @@ func urlShortener(res http.ResponseWriter, req *http.Request) {
 		urlMap[id] = string(body)
 		io.WriteString(res, fmt.Sprintf("http://%s/%s", ipSrvAddr, id))
 	case http.MethodGet:
-		if req.Header.Get("Content-Type") != "text/plain" {
-			http.Error(res, "Unsupported Media Type", http.StatusBadRequest)
-			return
-		}
 		id := req.URL.Path[1:]
 		originalURL, exists := urlMap[id]
 		if !exists {
