@@ -10,8 +10,8 @@ func main() {
 	var urls = make(map[string]string)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", UrlShortenerHandler(&urls))
-	mux.HandleFunc("/{id}", GetShortUrlHandler(&urls))
+	mux.HandleFunc("/", URLShortenerHandler(&urls))
+	mux.HandleFunc("/{id}", GetShortURLHandler(&urls))
 
 	err := http.ListenAndServe(ipSrvAddr, mux)
 	if err != nil {

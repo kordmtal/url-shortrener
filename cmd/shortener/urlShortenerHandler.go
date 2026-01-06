@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func UrlShortenerHandler(urls *map[string]string) http.HandlerFunc {
+func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
 			http.Error(res, "Method not allowed", http.StatusBadRequest)
@@ -41,7 +41,7 @@ func UrlShortenerHandler(urls *map[string]string) http.HandlerFunc {
 	}
 }
 
-func GetShortUrlHandler(urls *map[string]string) http.HandlerFunc {
+func GetShortURLHandler(urls *map[string]string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			http.Error(res, "Method not allowed", http.StatusBadRequest)
