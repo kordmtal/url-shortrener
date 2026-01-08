@@ -73,6 +73,8 @@ func TestURLShortenerHandler(t *testing.T) {
 			handler := URLShortenerHandler(&urls)
 			handler(w, r)
 
+			defer w.Result().Body.Close()
+
 			assert.Equal(t, tt.want.statusCode, w.Result().StatusCode)
 
 			if tt.url == "" {
@@ -130,6 +132,8 @@ func TestGetShortURLHandler(t *testing.T) {
 
 			handler := GetShortURLHandler(&urls)
 			handler(w, r)
+
+			defer w.Result().Body.Close()
 
 			assert.Equal(t, tt.statusCode, w.Result().StatusCode)
 			assert.Equal(t, tt.url, w.Result().Header.Get("Location"))
