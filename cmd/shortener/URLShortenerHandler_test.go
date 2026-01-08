@@ -70,6 +70,8 @@ func TestURLShortenerHandler(t *testing.T) {
 			r := httptest.NewRequest(http.MethodPost, "/", body)
 			w := httptest.NewRecorder()
 
+			defer r.Body.Close()
+
 			handler := URLShortenerHandler(&urls)
 			handler(w, r)
 
@@ -129,6 +131,8 @@ func TestGetShortURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/%s", tt.key), nil)
 			w := httptest.NewRecorder()
+
+			defer r.Body.Close()
 
 			handler := GetShortURLHandler(&urls)
 			handler(w, r)

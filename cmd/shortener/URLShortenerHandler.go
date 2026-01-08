@@ -14,6 +14,8 @@ func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 			return
 		}
 
+		defer req.Body.Close()
+
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, "Error reading body", http.StatusBadRequest)
