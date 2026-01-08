@@ -20,6 +20,7 @@ func TestURLShortenerHandler(t *testing.T) {
 		statusCode  int
 	}
 
+	// Имитация хранилища (In-memory storage)
 	urls := make(map[string]string)
 
 	tests := []struct {
@@ -38,11 +39,12 @@ func TestURLShortenerHandler(t *testing.T) {
 		},
 		{
 			name: "Test case 2 - existing URL",
-			url:  "http://example.com",
+			url:  "http://example.com", // Тот же URL
 			want: Want{
 				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
 				contentType: "text/plain",
-				statusCode:  http.StatusOK},
+				statusCode:  http.StatusOK, // Ожидаем 200, так как уже есть
+			},
 		},
 		{
 			name: "Test case 3 - another new URL",
@@ -66,35 +68,38 @@ func TestURLShortenerHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body := io.NopCloser(strings.NewReader(tt.url))
+			body := strings.NewReader(tt.url)
 			r := httptest.NewRequest(http.MethodPost, "/", body)
 			w := httptest.NewRecorder()
-
-			defer r.Body.Close()
-			defer w.Result().Body.Close()
 
 			handler := URLShortenerHandler(&urls)
 			handler(w, r)
 
-			assert.Equal(t, tt.want.statusCode, w.Result().StatusCode)
+			result := w.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 
 			if tt.url == "" {
 				return
 			}
 
-			assert.Equal(t, tt.want.contentType, w.Result().Header.Get("Content-Type"))
-			respBody, err := io.ReadAll(w.Result().Body)
+			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+
+			respBody, err := io.ReadAll(result.Body)
 			require.NoError(t, err)
+
 			respURL, err := url.Parse(string(respBody))
-			require.NoError(t, err)
+			require.NoError(t, err, "Response body should be a valid URL")
+
 			assert.Equal(t, tt.want.url.Scheme, respURL.Scheme)
 			assert.Equal(t, tt.want.url.Host, respURL.Host)
 
-			for k, v := range urls {
-				if v == tt.url {
-					assert.Equal(t, respURL.Path[1:], k)
-				}
-			}
+			shortID := respURL.Path[1:]
+
+			val, exists := urls[shortID]
+			assert.True(t, exists, "Key should exist in map")
+			assert.Equal(t, tt.url, val, "Map value should match original URL")
 		})
 	}
 }
@@ -103,22 +108,25 @@ func TestGetShortURLHandler(t *testing.T) {
 	urls := make(map[string]string)
 
 	tests := []struct {
-		name       string
-		url        string
-		key        string
-		statusCode int
+		name             string
+		key              string
+		url              string // URL для предварительного заполнения мапы
+		expectedLocation string // Ожидаемый заголовок Location
+		statusCode       int
 	}{
 		{
-			name:       "Test case 1",
-			key:        "abc123",
-			url:        "http://example.com",
-			statusCode: http.StatusTemporaryRedirect,
+			name:             "Test case 1 - Valid ID",
+			key:              "abc12345",
+			url:              "http://example.com",
+			expectedLocation: "http://example.com",
+			statusCode:       http.StatusTemporaryRedirect,
 		},
 		{
-			name:       "Test case 2 - non-existing key",
-			key:        "nonexistent",
-			url:        "",
-			statusCode: http.StatusBadRequest,
+			name:             "Test case 2 - Non-existing key",
+			key:              "nonexistent",
+			url:              "", // Не добавляем в мапу
+			expectedLocation: "",
+			statusCode:       http.StatusBadRequest,
 		},
 	}
 
@@ -131,14 +139,14 @@ func TestGetShortURLHandler(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/%s", tt.key), nil)
 			w := httptest.NewRecorder()
 
-			defer r.Body.Close()
-			defer w.Result().Body.Close()
-
 			handler := GetShortURLHandler(&urls)
 			handler(w, r)
 
-			assert.Equal(t, tt.statusCode, w.Result().StatusCode)
-			assert.Equal(t, tt.url, w.Result().Header.Get("Location"))
+			result := w.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.statusCode, result.StatusCode)
+			assert.Equal(t, tt.expectedLocation, result.Header.Get("Location"))
 		})
 	}
 }

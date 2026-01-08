@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,8 +14,6 @@ func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 			http.Error(res, "Method not allowed", http.StatusBadRequest)
 			return
 		}
-
-		defer req.Body.Close()
 
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -30,6 +29,7 @@ func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 
 		for k, v := range *urls {
 			if v == string(body) {
+				res.WriteHeader(http.StatusOK)
 				io.WriteString(res, fmt.Sprintf("http://%s/%s", ipSrvAddr, k))
 				return
 			}
@@ -37,7 +37,14 @@ func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 
 		res.WriteHeader(http.StatusCreated)
 
-		id := rand.Text()
+		b := make([]byte, 8)
+		_, err = rand.Read(b)
+		if err != nil {
+			http.Error(res, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		id := base64.RawURLEncoding.EncodeToString(b)
+
 		(*urls)[id] = string(body)
 		io.WriteString(res, fmt.Sprintf("http://%s/%s", ipSrvAddr, id))
 	}
@@ -45,10 +52,13 @@ func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
 
 func GetShortURLHandler(urls *map[string]string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		defer req.Body.Close()
-
 		if req.Method != http.MethodGet {
 			http.Error(res, "Method not allowed", http.StatusBadRequest)
+			return
+		}
+
+		if len(req.URL.Path) < 2 {
+			http.Error(res, "Invalid ID", http.StatusBadRequest)
 			return
 		}
 
