@@ -75,8 +75,6 @@ func TestURLShortenerHandler(t *testing.T) {
 			handler := URLShortenerHandler(&urls)
 			handler(w, r)
 
-			defer w.Result().Body.Close()
-
 			assert.Equal(t, tt.want.statusCode, w.Result().StatusCode)
 
 			if tt.url == "" {
@@ -86,6 +84,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, w.Result().Header.Get("Content-Type"))
 			respBody, err := io.ReadAll(w.Result().Body)
 			require.NoError(t, err)
+			defer w.Result().Body.Close()
 			respURL, err := url.Parse(string(respBody))
 			require.NoError(t, err)
 			assert.Equal(t, tt.want.url.Scheme, respURL.Scheme)
@@ -136,8 +135,6 @@ func TestGetShortURLHandler(t *testing.T) {
 
 			handler := GetShortURLHandler(&urls)
 			handler(w, r)
-
-			defer w.Result().Body.Close()
 
 			assert.Equal(t, tt.statusCode, w.Result().StatusCode)
 			assert.Equal(t, tt.url, w.Result().Header.Get("Location"))
