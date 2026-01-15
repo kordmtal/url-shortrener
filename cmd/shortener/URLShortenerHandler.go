@@ -36,23 +36,23 @@ func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
 			c.String(http.StatusBadRequest, "Error generate ID")
 			return
 		}
-		resId := base64.RawURLEncoding.EncodeToString(b)
+		resID := base64.RawURLEncoding.EncodeToString(b)
 
-		urls[resId] = reqURL
-		c.String(http.StatusCreated, "http://%s/%s", ipSrvAddr, resId)
+		urls[resID] = reqURL
+		c.String(http.StatusCreated, "http://%s/%s", ipSrvAddr, resID)
 	}
 }
 
 func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		reqId := c.Param("id")
+		reqID := c.Param("id")
 
-		if reqId == "" {
+		if reqID == "" {
 			c.String(http.StatusBadRequest, "Invalid ID")
 			return
 		}
 
-		originalURL, exists := urls[reqId]
+		originalURL, exists := urls[reqID]
 		if !exists {
 			c.String(http.StatusBadRequest, "URL not found")
 			return
