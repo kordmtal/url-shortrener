@@ -8,16 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func URLShortenerHandler(urls *map[string]string) gin.HandlerFunc {
+func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		reqURL, err := c.GetRawData()
+		body, err := c.GetRawData()
 		if err != nil {
 			c.String(http.StatusBadRequest, "Error parse body")
 			return
 		}
 
-		for k, v := range *urls {
-			if v == string(reqURL) {
+		reqURL := string(body)
+
+		if reqURL == "" {
+			c.String(http.StatusBadRequest, "Error parse body")
+			return
+		}
+
+		for k, v := range urls {
+			if v == reqURL {
 				c.String(http.StatusOK, "http://%s/%s", ipSrvAddr, k)
 				return
 			}
@@ -31,12 +38,12 @@ func URLShortenerHandler(urls *map[string]string) gin.HandlerFunc {
 		}
 		resId := base64.RawURLEncoding.EncodeToString(b)
 
-		(*urls)[resId] = string(reqURL)
-		c.String(http.StatusOK, "http://%s/%s", ipSrvAddr, resId)
+		urls[resId] = reqURL
+		c.String(http.StatusCreated, "http://%s/%s", ipSrvAddr, resId)
 	}
 }
 
-func GetShortURLHandler(urls *map[string]string) gin.HandlerFunc {
+func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqId := c.Param("id")
 
@@ -45,7 +52,7 @@ func GetShortURLHandler(urls *map[string]string) gin.HandlerFunc {
 			return
 		}
 
-		originalURL, exists := (*urls)[reqId]
+		originalURL, exists := urls[reqId]
 		if !exists {
 			c.String(http.StatusBadRequest, "URL not found")
 			return
