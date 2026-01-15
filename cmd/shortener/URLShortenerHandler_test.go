@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			url:  "http://example.com",
 			want: Want{
 				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusCreated,
 			},
 		},
@@ -42,7 +43,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			url:  "http://example.com", // Тот же URL
 			want: Want{
 				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusOK, // Ожидаем 200, так как уже есть
 			},
 		},
@@ -51,7 +52,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			url:  "https://openai.com",
 			want: Want{
 				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusCreated,
 			},
 		},
@@ -68,14 +69,17 @@ func TestURLShortenerHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			r := gin.New()
+			r.POST("/", URLShortenerHandler(urls))
+
 			body := strings.NewReader(tt.url)
-			r := httptest.NewRequest(http.MethodPost, "/", body)
-			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/", body)
+			res := httptest.NewRecorder()
 
-			handler := URLShortenerHandler(&urls)
-			handler(w, r)
+			r.ServeHTTP(res, req)
 
-			result := w.Result()
+			result := res.Result()
 			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
@@ -136,13 +140,16 @@ func TestGetShortURLHandler(t *testing.T) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/%s", tt.key), nil)
-			w := httptest.NewRecorder()
+			gin.SetMode(gin.TestMode)
+			r := gin.New()
+			r.GET("/:id", GetShortURLHandler(urls))
 
-			handler := GetShortURLHandler(&urls)
-			handler(w, r)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/%s", tt.key), nil)
+			res := httptest.NewRecorder()
 
-			result := w.Result()
+			r.ServeHTTP(res, req)
+
+			result := res.Result()
 			defer result.Body.Close()
 
 			assert.Equal(t, tt.statusCode, result.StatusCode)

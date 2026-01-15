@@ -3,72 +3,61 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
-	"io"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func URLShortenerHandler(urls *map[string]string) http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			http.Error(res, "Method not allowed", http.StatusBadRequest)
-			return
-		}
-
-		body, err := io.ReadAll(req.Body)
+func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := c.GetRawData()
 		if err != nil {
-			http.Error(res, "Error reading body", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "Error parse body")
 			return
 		}
 
-		if string(body) == "" {
-			http.Error(res, "Empty URL", http.StatusBadRequest)
+		reqURL := string(body)
+
+		if reqURL == "" {
+			c.String(http.StatusBadRequest, "Error parse body")
 			return
 		}
-		res.Header().Set("Content-Type", "text/plain")
 
-		for k, v := range *urls {
-			if v == string(body) {
-				res.WriteHeader(http.StatusOK)
-				io.WriteString(res, fmt.Sprintf("http://%s/%s", ipSrvAddr, k))
+		for k, v := range urls {
+			if v == reqURL {
+				c.String(http.StatusOK, "http://%s/%s", ipSrvAddr, k)
 				return
 			}
 		}
 
-		res.WriteHeader(http.StatusCreated)
-
 		b := make([]byte, 8)
 		_, err = rand.Read(b)
 		if err != nil {
-			http.Error(res, "Internal error", http.StatusInternalServerError)
+			c.String(http.StatusBadRequest, "Error generate ID")
 			return
 		}
-		id := base64.RawURLEncoding.EncodeToString(b)
+		resID := base64.RawURLEncoding.EncodeToString(b)
 
-		(*urls)[id] = string(body)
-		io.WriteString(res, fmt.Sprintf("http://%s/%s", ipSrvAddr, id))
+		urls[resID] = reqURL
+		c.String(http.StatusCreated, "http://%s/%s", ipSrvAddr, resID)
 	}
 }
 
-func GetShortURLHandler(urls *map[string]string) http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			http.Error(res, "Method not allowed", http.StatusBadRequest)
+func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		reqID := c.Param("id")
+
+		if reqID == "" {
+			c.String(http.StatusBadRequest, "Invalid ID")
 			return
 		}
 
-		if len(req.URL.Path) < 2 {
-			http.Error(res, "Invalid ID", http.StatusBadRequest)
-			return
-		}
-
-		id := req.URL.Path[1:]
-		originalURL, exists := (*urls)[id]
+		originalURL, exists := urls[reqID]
 		if !exists {
-			http.Error(res, "URL not found", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "URL not found")
 			return
 		}
-		res.Header().Set("Location", originalURL)
-		res.WriteHeader(http.StatusTemporaryRedirect)
+
+		c.Redirect(http.StatusTemporaryRedirect, originalURL)
 	}
 }
