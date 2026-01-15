@@ -1,7 +1,9 @@
 package main
 
 import (
-	"net/http"
+	"log"
+
+	"github.com/gin-gonic/gin"
 )
 
 const ipSrvAddr = "localhost:8080"
@@ -9,12 +11,11 @@ const ipSrvAddr = "localhost:8080"
 func main() {
 	var urls = make(map[string]string)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", URLShortenerHandler(&urls))
-	mux.HandleFunc("/{id}", GetShortURLHandler(&urls))
+	r := gin.Default()
+	r.POST("/", URLShortenerHandler(&urls))
+	r.GET("/:id", GetShortURLHandler(&urls))
 
-	err := http.ListenAndServe(ipSrvAddr, mux)
-	if err != nil {
-		panic(err)
+	if err := r.Run(); err != nil {
+		log.Fatalf("failed to run server: %v", err)
 	}
 }
