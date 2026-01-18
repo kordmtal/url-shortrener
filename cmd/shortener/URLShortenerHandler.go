@@ -25,7 +25,7 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 
 		for k, v := range urls {
 			if v == reqURL {
-				c.String(http.StatusOK, "http://%s/%s", basicURLServerAdress, k)
+				c.String(http.StatusOK, "%s%s", basicURLServerAdress, k)
 				return
 			}
 		}
@@ -39,7 +39,7 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
 		urls[resID] = reqURL
-		c.String(http.StatusCreated, "http://%s/%s", basicURLServerAdress, resID)
+		c.String(http.StatusCreated, "%s%s", basicURLServerAdress, resID)
 	}
 }
 
