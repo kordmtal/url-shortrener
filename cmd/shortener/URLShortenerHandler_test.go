@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testBaseURL = "localhost:8080"
+
 func TestURLShortenerHandler(t *testing.T) {
 	type Want struct {
 		url         url.URL
@@ -33,7 +35,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			name: "Test case 1 - new URL",
 			url:  "http://example.com",
 			want: Want{
-				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
+				url:         url.URL{Scheme: "http", Host: testBaseURL},
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusCreated,
 			},
@@ -42,7 +44,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			name: "Test case 2 - existing URL",
 			url:  "http://example.com", // Тот же URL
 			want: Want{
-				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
+				url:         url.URL{Scheme: "http", Host: testBaseURL},
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusOK, // Ожидаем 200, так как уже есть
 			},
@@ -51,7 +53,7 @@ func TestURLShortenerHandler(t *testing.T) {
 			name: "Test case 3 - another new URL",
 			url:  "https://openai.com",
 			want: Want{
-				url:         url.URL{Scheme: "http", Host: ipSrvAddr},
+				url:         url.URL{Scheme: "http", Host: testBaseURL},
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusCreated,
 			},
@@ -71,7 +73,7 @@ func TestURLShortenerHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			r := gin.New()
-			r.POST("/", URLShortenerHandler(urls))
+			r.POST("/", URLShortenerHandler(urls, testBaseURL))
 
 			body := strings.NewReader(tt.url)
 			req := httptest.NewRequest(http.MethodPost, "/", body)
