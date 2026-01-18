@@ -4,18 +4,19 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kordmtal/url-shortrener/internal/config"
 )
-
-const ipSrvAddr = "localhost:8080"
 
 func main() {
 	urls := make(map[string]string)
 
+	cfg := config.Parse()
+
 	r := gin.Default()
-	r.POST("/", URLShortenerHandler(urls))
+	r.POST("/", URLShortenerHandler(urls, cfg.BasicURLServerAdress))
 	r.GET("/:id", GetShortURLHandler(urls))
 
-	if err := r.Run(); err != nil {
+	if err := r.Run(cfg.ServerAddress); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }
