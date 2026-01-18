@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,11 +24,12 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 			return
 		}
 
+		if strings.Split(basicURLServerAdress, ":")[0] == "localhost" {
+			basicURLServerAdress = "http://" + basicURLServerAdress + "/"
+		}
+
 		for k, v := range urls {
 			if v == reqURL {
-				if basicURLServerAdress == "localhost:8080" {
-					basicURLServerAdress = "http://localhost:8080/"
-				}
 				c.String(http.StatusOK, "%s%s", basicURLServerAdress, k)
 				return
 			}
@@ -42,9 +44,7 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
 		urls[resID] = reqURL
-		if basicURLServerAdress == "localhost:8080" {
-			basicURLServerAdress = "http://localhost:8080/"
-		}
+
 		c.String(http.StatusCreated, "%s%s", basicURLServerAdress, resID)
 	}
 }
