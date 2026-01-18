@@ -25,6 +25,9 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 
 		for k, v := range urls {
 			if v == reqURL {
+				if basicURLServerAdress == "localhost:8080" {
+					basicURLServerAdress = "http://localhost:8080/"
+				}
 				c.String(http.StatusOK, "%s%s", basicURLServerAdress, k)
 				return
 			}
@@ -39,6 +42,9 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
 		urls[resID] = reqURL
+		if basicURLServerAdress == "localhost:8080" {
+			basicURLServerAdress = "http://localhost:8080/"
+		}
 		c.String(http.StatusCreated, "%s%s", basicURLServerAdress, resID)
 	}
 }
