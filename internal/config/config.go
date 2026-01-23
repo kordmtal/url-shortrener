@@ -2,8 +2,10 @@ package config
 
 import (
 	"flag"
-	"os"
+	"log"
 	"strings"
+
+	"github.com/caarlos0/env/v6"
 )
 
 const (
@@ -11,31 +13,39 @@ const (
 )
 
 type Config struct {
-	ServerAddress        string
-	BasicURLServerAdress string
+	ServerAddress        string `env:"SERVER_ADDRESS"`
+	BasicURLServerAdress string `env:"BASE_URL"`
 }
 
 func Parse() *Config {
-	cfg := &Config{
-		ServerAddress:        defaultServerAddress,
-		BasicURLServerAdress: defaultServerAddress,
-	}
+	cfg := Config{}
 
-	flag.StringVar(&cfg.ServerAddress, "a", defaultServerAddress, "Server address and port to listen on")
-	flag.StringVar(&cfg.BasicURLServerAdress, "b", defaultServerAddress, "Basic URL server address")
-
+	// Сначала регистрируем флаги с дефолтными значениями
+	var serverAddr string
+	var baseURL string
+	flag.StringVar(&serverAddr, "a", defaultServerAddress, "Server address and port to listen on")
+	flag.StringVar(&baseURL, "b", defaultServerAddress, "Basic URL server address")
 	flag.Parse()
 
-	if envAddr := os.Getenv("SERVER_ADDRESS"); envAddr != "" {
-		cfg.ServerAddress = envAddr
+	// Затем парсим переменные окружения
+	err := env.Parse(&cfg)
+	if err != nil {
+		log.Fatal(err)
 	}
-	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-		cfg.BasicURLServerAdress = envBaseURL
+
+	// Применяем приоритет: env -> flag -> default
+	// Если env переменная не установлена, используем значение из флага
+	if cfg.ServerAddress == "" {
+		cfg.ServerAddress = serverAddr
+	}
+
+	if cfg.BasicURLServerAdress == "" {
+		cfg.BasicURLServerAdress = baseURL
 	}
 
 	cfg.BasicURLServerAdress = normalizeBaseURL(cfg.BasicURLServerAdress)
 
-	return cfg
+	return &cfg
 }
 
 func normalizeBaseURL(u string) string {
