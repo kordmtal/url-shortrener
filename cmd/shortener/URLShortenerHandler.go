@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
+func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := c.GetRawData()
 		if err != nil {
@@ -23,9 +24,13 @@ func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
 			return
 		}
 
+		if !strings.HasPrefix(reqURL, "http://") && !strings.HasPrefix(reqURL, "https://") {
+			reqURL = "http://" + reqURL
+		}
+
 		for k, v := range urls {
 			if v == reqURL {
-				c.String(http.StatusOK, "http://%s/%s", ipSrvAddr, k)
+				c.String(http.StatusOK, "%s%s", basicURLServerAdress, k)
 				return
 			}
 		}
@@ -39,7 +44,8 @@ func URLShortenerHandler(urls map[string]string) gin.HandlerFunc {
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
 		urls[resID] = reqURL
-		c.String(http.StatusCreated, "http://%s/%s", ipSrvAddr, resID)
+
+		c.String(http.StatusCreated, "%s%s", basicURLServerAdress, resID)
 	}
 }
 

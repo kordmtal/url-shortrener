@@ -1,4 +1,4 @@
-module github.com/kordmtal/url-shortrener.git
+module github.com/kordmtal/url-shortrener
 
 go 1.25.5
 
