@@ -24,8 +24,8 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 			return
 		}
 
-		if strings.Split(basicURLServerAdress, ":")[0] == "localhost" {
-			basicURLServerAdress = "http://" + basicURLServerAdress + "/"
+		if !strings.HasPrefix(reqURL, "http://") && !strings.HasPrefix(reqURL, "https://") {
+			reqURL = "http://" + reqURL
 		}
 
 		for k, v := range urls {
