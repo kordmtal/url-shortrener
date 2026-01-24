@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kordmtal/url-shortrener/internal/config"
+	"github.com/kordmtal/url-shortrener/internal/handler"
+	"github.com/kordmtal/url-shortrener/internal/logger"
 )
 
 func main() {
@@ -12,9 +14,12 @@ func main() {
 
 	cfg := config.Parse()
 
-	r := gin.Default()
-	r.POST("/", URLShortenerHandler(urls, cfg.BasicURLServerAdress))
-	r.GET("/:id", GetShortURLHandler(urls))
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(logger.GetLogger())
+
+	r.POST("/", handler.URLShortenerHandler(urls, cfg.BasicURLServerAdress))
+	r.GET("/:id", handler.GetShortURLHandler(urls))
 
 	if err := r.Run(cfg.ServerAddress); err != nil {
 		log.Fatalf("failed to run server: %v", err)
