@@ -9,6 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Request struct {
+	URL string `json:"url"`
+}
+
+type Response struct {
+	URL string `json:"result"`
+}
+
 func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := c.GetRawData()
@@ -65,5 +73,48 @@ func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 		}
 
 		c.Redirect(http.StatusTemporaryRedirect, originalURL)
+	}
+}
+
+func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req Request
+
+		if err := c.BindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "Error parse body")
+			return
+		}
+
+		if req.URL == "" {
+			c.JSON(http.StatusBadRequest, Response{})
+			return
+		}
+
+		if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
+			req.URL = "http://" + req.URL
+		}
+
+		var res Response
+
+		for k, v := range urls {
+			if v == req.URL {
+				res.URL = basicURLServerAdress + k
+				c.JSON(http.StatusOK, res)
+				return
+			}
+		}
+
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			c.String(http.StatusBadRequest, "Error generate ID")
+			return
+		}
+		resID := base64.RawURLEncoding.EncodeToString(b)
+
+		urls[resID] = req.URL
+
+		res.URL = basicURLServerAdress + resID
+
+		c.JSON(http.StatusCreated, res)
 	}
 }
