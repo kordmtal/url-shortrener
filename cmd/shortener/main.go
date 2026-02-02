@@ -20,6 +20,7 @@ func main() {
 
 	r.POST("/", handler.URLShortenerHandler(urls, cfg.BasicURLServerAdress))
 	r.GET("/:id", handler.GetShortURLHandler(urls))
+	r.POST("/api/shorten", handler.URLShortenerJSONHandler(urls, cfg.BasicURLServerAdress))
 
 	if err := r.Run(cfg.ServerAddress); err != nil {
 		log.Fatalf("failed to run server: %v", err)
