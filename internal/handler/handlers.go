@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -79,14 +81,22 @@ func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req Request
+		var res Response
 
-		if err := c.BindJSON(&req); err != nil {
+		body := c.Request.Body
+		if err := json.NewDecoder(body).Decode(&req); err != nil {
 			c.String(http.StatusBadRequest, "Error parse body")
 			return
 		}
 
+		sendJSON := func(status int, r Response) {
+			var buf bytes.Buffer
+			json.NewEncoder(&buf).Encode(&r)
+			c.Data(status, "application/json; charset=utf-8", buf.Bytes())
+		}
+
 		if req.URL == "" {
-			c.JSON(http.StatusBadRequest, Response{})
+			sendJSON(http.StatusBadRequest, res)
 			return
 		}
 
@@ -94,12 +104,10 @@ func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string
 			req.URL = "http://" + req.URL
 		}
 
-		var res Response
-
 		for k, v := range urls {
 			if v == req.URL {
 				res.URL = basicURLServerAdress + k
-				c.JSON(http.StatusOK, res)
+				sendJSON(http.StatusOK, res)
 				return
 			}
 		}
@@ -115,6 +123,6 @@ func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string
 
 		res.URL = basicURLServerAdress + resID
 
-		c.JSON(http.StatusCreated, res)
+		sendJSON(http.StatusCreated, res)
 	}
 }
