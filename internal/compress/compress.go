@@ -15,7 +15,10 @@ type gzipResponseWriter struct {
 
 func ToGzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
+		contentType := c.GetHeader("Content-Type")
+		if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") &&
+			!strings.Contains(contentType, "application/json") &&
+			!strings.Contains(contentType, "text/html") {
 			c.Next()
 			return
 		}
