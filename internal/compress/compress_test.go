@@ -107,11 +107,18 @@ func TestGzipMiddleware_ResponseCompression(t *testing.T) {
 			wantCompressed: false,
 		},
 		{
-			name:           "Don't compress non-JSON/HTML content",
+			name:           "Don't compress binary content (images)",
+			acceptEncoding: "gzip",
+			contentType:    "image/png",
+			responseBody:   "fake png data",
+			wantCompressed: false,
+		},
+		{
+			name:           "Compress text/plain when client accepts gzip",
 			acceptEncoding: "gzip",
 			contentType:    "text/plain",
 			responseBody:   "plain text",
-			wantCompressed: false,
+			wantCompressed: true,
 		},
 		{
 			name:           "Compress with multiple encodings",
@@ -242,5 +249,4 @@ func TestGzipMiddleware_InvalidGzipRequest(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Error decompressing request")
 }

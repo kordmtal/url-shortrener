@@ -9,84 +9,95 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// gzipResponseWriter wraps gin.ResponseWriter to compress response data
+// gzipResponseWriter оборачивает gin.ResponseWriter для сжатия данных
 type gzipResponseWriter struct {
 	gin.ResponseWriter
-	writer         *gzip.Writer
-	wroteHeader    bool
-	shouldCompress bool
+	writer  *gzip.Writer
+	wasUsed bool // флаг: использовался ли gzip writer
 }
 
-// Write compresses data before writing to the underlying ResponseWriter
+// Write перехватывает запись данных и сжимает их, если нужно
 func (g *gzipResponseWriter) Write(data []byte) (int, error) {
-	// Check content type on first write
-	if !g.wroteHeader {
-		g.wroteHeader = true
-		contentType := g.Header().Get("Content-Type")
+	// 1. Проверяем Content-Type (чтобы не сжимать картинки или уже сжатые файлы)
+	contentType := g.Header().Get("Content-Type")
 
-		// Only compress application/json and text/html
-		g.shouldCompress = strings.Contains(contentType, "application/json") ||
-			strings.Contains(contentType, "text/html")
+	shouldCompress := strings.Contains(contentType, "application/json") ||
+		strings.Contains(contentType, "text/html") ||
+		strings.Contains(contentType, "application/javascript") ||
+		strings.Contains(contentType, "text/css") ||
+		strings.Contains(contentType, "text/plain") ||
+		strings.Contains(contentType, "text/xml")
 
-		if g.shouldCompress {
-			// Set Content-Encoding header only when we compress
-			g.Header().Set("Content-Encoding", "gzip")
-		}
-	}
-
-	if !g.shouldCompress {
+	if !shouldCompress {
+		// Если сжимать не надо — пишем в оригинальный ResponseWriter как есть
 		return g.ResponseWriter.Write(data)
 	}
 
+	// 2. Если сжимаем — настраиваем заголовки (только при первой записи)
+	if !g.wasUsed {
+		g.wasUsed = true
+		g.Header().Del("Content-Length") // Старый размер уже неверный
+		g.Header().Set("Content-Encoding", "gzip")
+	}
+
+	// 3. Пишем данные через gzip.Writer
 	return g.writer.Write(data)
 }
 
-// WriteString compresses string data before writing
+// WriteString — оптимизация для записи строк (тоже сжимаем)
 func (g *gzipResponseWriter) WriteString(s string) (int, error) {
 	return g.Write([]byte(s))
 }
 
-// GzipMiddleware handles both request decompression and response compression
+// GzipMiddleware обрабатывает сжатие запросов и ответов
 func GzipMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Handle request decompression if Content-Encoding: gzip
-		if c.GetHeader("Content-Encoding") == "gzip" {
-			reader, err := gzip.NewReader(c.Request.Body)
+		// --- ЧАСТЬ 1: РАСПАКОВКА ЗАПРОСА (Decompress Request) ---
+		// Если клиент прислал сжатые данные (Content-Encoding: gzip)
+		if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
+			// Создаем читалку gzip поверх тела запроса
+			gzipReader, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
-				c.String(http.StatusBadRequest, "Error decompressing request")
-				c.Abort()
+				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
-			defer reader.Close()
-			c.Request.Body = io.NopCloser(reader)
+			// Подменяем тело запроса на распакованное
+			// Теперь хендлер будет читать обычный JSON, даже не зная, что он был сжат
+			c.Request.Body = io.NopCloser(gzipReader)
+
+			// Не забываем закрыть reader после обработки запроса
+			defer gzipReader.Close()
 		}
 
-		// Handle response compression if client accepts gzip
+		// --- ЧАСТЬ 2: СЖАТИЕ ОТВЕТА (Compress Response) ---
+		// Если клиент НЕ поддерживает gzip, ничего не делаем
 		if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
 			c.Next()
 			return
 		}
 
-		// Create gzip writer for response
-		gz, err := gzip.NewWriterLevel(c.Writer, gzip.BestCompression)
+		// Создаем gzip.Writer, который будет писать в оригинальный c.Writer
+		gz, err := gzip.NewWriterLevel(c.Writer, gzip.BestSpeed)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Error initializing compression")
-			c.Abort()
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		// Wrap the response writer (don't set Content-Encoding yet, will be set in Write if needed)
+		// Оборачиваем ResponseWriter в нашу структуру
 		gzWriter := &gzipResponseWriter{
 			ResponseWriter: c.Writer,
 			writer:         gz,
 		}
 		c.Writer = gzWriter
 
+		// Важный заголовок для прокси-серверов
+		c.Header("Vary", "Accept-Encoding")
+
+		// Передаем управление дальше (твоему хендлеру)
 		c.Next()
 
-		// Only close and flush if we actually compressed
-		if gzWriter.shouldCompress {
-			gz.Flush()
+		// Закрываем gzip только если он использовался (чтобы дописать "хвост" архива)
+		if gzWriter.wasUsed {
 			gz.Close()
 		}
 	}
