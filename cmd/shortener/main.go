@@ -18,7 +18,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(logger.GetLogger())
-	r.Use(compress.ToGzip())
+	r.Use(compress.GzipMiddleware())
 
 	r.POST("/", handler.URLShortenerHandler(urls, cfg.BasicURLServerAdress))
 	r.GET("/:id", handler.GetShortURLHandler(urls))
