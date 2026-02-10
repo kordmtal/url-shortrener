@@ -26,7 +26,7 @@ func ToGzip() gin.HandlerFunc {
 		}
 		defer gz.Close()
 
-		c.Header("Accept-Encoding", "gzip")
+		c.Header("Content-Encoding", "gzip")
 		c.Writer = gzipResponseWriter{c.Writer, gz}
 		c.Next()
 	}
