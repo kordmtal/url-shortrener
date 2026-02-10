@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kordmtal/url-shortrener/internal/compress"
 	"github.com/kordmtal/url-shortrener/internal/config"
 	"github.com/kordmtal/url-shortrener/internal/handler"
 	"github.com/kordmtal/url-shortrener/internal/logger"
@@ -17,6 +18,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(logger.GetLogger())
+	r.Use(compress.ToGzip())
 
 	r.POST("/", handler.URLShortenerHandler(urls, cfg.BasicURLServerAdress))
 	r.GET("/:id", handler.GetShortURLHandler(urls))
