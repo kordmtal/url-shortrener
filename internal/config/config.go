@@ -48,6 +48,10 @@ func Parse() *Config {
 		cfg.BasicURLServerAdress = baseURL
 	}
 
+	if fileRepositoryPath == "" {
+		cfg.FileRepositoryPath = defaultFileRepositoryPath
+	}
+
 	cfg.BasicURLServerAdress = normalizeBaseURL(cfg.BasicURLServerAdress)
 
 	return &cfg
