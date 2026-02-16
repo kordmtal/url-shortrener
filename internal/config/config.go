@@ -16,7 +16,7 @@ const (
 type Config struct {
 	ServerAddress        string `env:"SERVER_ADDRESS"`
 	BasicURLServerAdress string `env:"BASE_URL"`
-	FileRepositoryPath   string `env:"FILE_REPOSITORY_PATH"`
+	FileRepositoryPath   string `env:"FILE_STORAGE_PATH"`
 }
 
 func Parse() *Config {
