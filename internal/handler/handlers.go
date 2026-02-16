@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kordmtal/url-shortrener/internal/storage"
 )
 
 type Request struct {
@@ -19,7 +20,7 @@ type Response struct {
 	URL string `json:"result"`
 }
 
-func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
+func URLShortenerHandler(urls storage.URLsStorage, basicURLServerAdress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := c.GetRawData()
 		if err != nil {
@@ -38,11 +39,9 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 			reqURL = "http://" + reqURL
 		}
 
-		for k, v := range urls {
-			if v == reqURL {
-				c.String(http.StatusOK, "%s%s", basicURLServerAdress, k)
-				return
-			}
+		if existingID, found := urls.FindByURL(reqURL); found {
+			c.String(http.StatusOK, "%s%s", basicURLServerAdress, existingID)
+			return
 		}
 
 		b := make([]byte, 8)
@@ -53,13 +52,13 @@ func URLShortenerHandler(urls map[string]string, basicURLServerAdress string) gi
 		}
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
-		urls[resID] = reqURL
+		urls.Set(reqURL, resID)
 
 		c.String(http.StatusCreated, "%s%s", basicURLServerAdress, resID)
 	}
 }
 
-func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
+func GetShortURLHandler(urls storage.URLsStorage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqID := c.Param("id")
 
@@ -68,8 +67,8 @@ func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 			return
 		}
 
-		originalURL, exists := urls[reqID]
-		if !exists {
+		originalURL, err := urls.Get(reqID)
+		if err != nil || originalURL == "" {
 			c.String(http.StatusBadRequest, "URL not found")
 			return
 		}
@@ -78,7 +77,7 @@ func GetShortURLHandler(urls map[string]string) gin.HandlerFunc {
 	}
 }
 
-func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string) gin.HandlerFunc {
+func URLShortenerJSONHandler(urls storage.URLsStorage, basicURLServerAdress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req Request
 		var res Response
@@ -104,12 +103,10 @@ func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string
 			req.URL = "http://" + req.URL
 		}
 
-		for k, v := range urls {
-			if v == req.URL {
-				res.URL = basicURLServerAdress + k
-				sendJSON(http.StatusOK, res)
-				return
-			}
+		if existingID, found := urls.FindByURL(req.URL); found {
+			res.URL = basicURLServerAdress + existingID
+			sendJSON(http.StatusOK, res)
+			return
 		}
 
 		b := make([]byte, 8)
@@ -119,7 +116,7 @@ func URLShortenerJSONHandler(urls map[string]string, basicURLServerAdress string
 		}
 		resID := base64.RawURLEncoding.EncodeToString(b)
 
-		urls[resID] = req.URL
+		urls.Set(req.URL, resID)
 
 		res.URL = basicURLServerAdress + resID
 
