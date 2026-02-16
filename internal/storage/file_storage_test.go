@@ -15,6 +15,7 @@ func TestFileRepository(t *testing.T) {
 
 	rep, err := NewFileRepository(tempFile.Name())
 	require.NoError(t, err)
+	defer rep.Close()
 
 	url, err := rep.Get("missing_key")
 	require.NoError(t, err)
@@ -33,8 +34,6 @@ func TestFileRepository(t *testing.T) {
 	url, found = rep.FindByURL("testURL")
 	require.True(t, found)
 	assert.Equal(t, "testKey", url)
-
-	rep.Close()
 
 	rep2, err := NewFileRepository(tempFile.Name())
 	require.NoError(t, err)
