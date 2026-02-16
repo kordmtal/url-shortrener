@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kordmtal/url-shortrener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +48,7 @@ func TestURLShortenerHandler(t *testing.T) {
 	}
 
 	// Имитация хранилища (In-memory storage)
-	urls := make(map[string]string)
+	urls := storage.NewMapRepository()
 
 	tests := []struct {
 		name string
@@ -128,8 +129,9 @@ func TestURLShortenerHandler(t *testing.T) {
 
 			shortID := respURL.Path[1:]
 
-			val, exists := urls[shortID]
-			assert.True(t, exists, "Key should exist in map")
+			val, err := urls.Get(shortID)
+			require.NoError(t, err)
+			assert.NotEmpty(t, val, "URL should exist in repository")
 			expectedValue := tt.url
 			if tt.name == "Test case 5 - localhost without scheme" {
 				expectedValue = "http://" + tt.url
@@ -140,7 +142,7 @@ func TestURLShortenerHandler(t *testing.T) {
 }
 
 func TestGetShortURLHandler(t *testing.T) {
-	urls := make(map[string]string)
+	urls := storage.NewMapRepository()
 
 	tests := []struct {
 		name             string
@@ -167,7 +169,7 @@ func TestGetShortURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		if tt.url != "" {
-			urls[tt.key] = tt.url
+			urls.Set(tt.url, tt.key)
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -191,7 +193,7 @@ func TestURLShortenerJSONHandler(t *testing.T) {
 	}
 
 	// Имитация хранилища (In-memory storage)
-	urls := make(map[string]string)
+	urls := storage.NewMapRepository()
 
 	tests := []struct {
 		name string
@@ -271,8 +273,9 @@ func TestURLShortenerJSONHandler(t *testing.T) {
 
 			shortID := respURL.Path[1:]
 
-			addr, exists := urls[shortID]
-			assert.True(t, exists, "Key should exist in map")
+			addr, err := urls.Get(shortID)
+			require.NoError(t, err)
+			assert.NotEmpty(t, addr, "URL should exist in repository")
 
 			expectedValue := tt.req.URL
 			if !strings.HasPrefix(tt.req.URL, "http://") && !strings.HasPrefix(tt.req.URL, "https://") {

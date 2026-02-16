@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	defaultServerAddress = "localhost:8080"
+	defaultServerAddress      = "localhost:8080"
+	defaultFileRepositoryPath = "/tmp/short-url-db.json"
 )
 
 type Config struct {
 	ServerAddress        string `env:"SERVER_ADDRESS"`
 	BasicURLServerAdress string `env:"BASE_URL"`
+	FileRepositoryPath   string `env:"FILE_STORAGE_PATH"`
 }
 
 func Parse() *Config {
@@ -23,8 +25,11 @@ func Parse() *Config {
 	// Сначала регистрируем флаги с дефолтными значениями
 	var serverAddr string
 	var baseURL string
+	var fileRepositoryPath string
+
 	flag.StringVar(&serverAddr, "a", defaultServerAddress, "Server address and port to listen on")
 	flag.StringVar(&baseURL, "b", defaultServerAddress, "Basic URL server address")
+	flag.StringVar(&fileRepositoryPath, "f", defaultFileRepositoryPath, "Path to file repository")
 	flag.Parse()
 
 	// Затем парсим переменные окружения
@@ -41,6 +46,10 @@ func Parse() *Config {
 
 	if cfg.BasicURLServerAdress == "" {
 		cfg.BasicURLServerAdress = baseURL
+	}
+
+	if cfg.FileRepositoryPath == "" {
+		cfg.FileRepositoryPath = fileRepositoryPath
 	}
 
 	cfg.BasicURLServerAdress = normalizeBaseURL(cfg.BasicURLServerAdress)
